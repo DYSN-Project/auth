@@ -17,7 +17,7 @@ type UseCaseInterface interface {
 	ConfirmRegister(token string) (*models.User, error)
 	Login(email string, password string) (*models.Tokens, error)
 	GetTokensByRefresh(refreshToken string) (*models.Tokens, error)
-	Verify(accessToken string) (bool, error)
+	Verify(accessToken string) error
 }
 
 var (
@@ -127,15 +127,14 @@ func (u *Usecase) GetTokensByRefresh(refreshToken string) (*models.Tokens, error
 	return u.getTokens(user.ID)
 }
 
-func (u *Usecase) Verify(accessToken string) (bool, error) {
+func (u *Usecase) Verify(accessToken string) error {
 	verify, err := u.jwtService.Verify(accessToken, u.cfg.GetJwtAccessSecretKey())
-	if err != nil {
+	if err != nil || !verify {
 		u.logger.ErrorLog.Println("verify access token error: ", err)
 
-		return false, errTokenInvalid
+		return errTokenInvalid
 	}
-
-	return verify, nil
+	return nil
 }
 
 func (u *Usecase) getTokens(userId uuid.UUID) (*models.Tokens, error) {

@@ -2,13 +2,16 @@ syntax = "proto3";
 
 option go_package = "/grpc/pb;pb";
 
+import "google/protobuf/Empty.proto";
+import "google/protobuf/timestamp.proto";
+
 package auth;
 
 service Auth {
   rpc Register(RegisterRequest) returns (Token);
   rpc ConfirmRegister(Token) returns (User);
   rpc Login(LoginRequest) returns (Tokens);
-  rpc Verify(Token) returns (Success);
+  rpc Verify(Token) returns (google.protobuf.Empty);
   rpc UpdateTokens(Token) returns (Tokens);
 }
 
@@ -17,17 +20,16 @@ message RegisterRequest {
   string password = 2;
 }
 
-message ConfirmRegisterResponse {
-  Tokens tokens = 1;
-}
-
 message Token {
   string token = 1;
 }
 
 message User {
-  int64 userId = 1;
-  string email = 2;
+  string                    id = 1;
+  string                    email = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+  int32                     status = 5;
 }
 
 message Tokens {
@@ -38,9 +40,4 @@ message Tokens {
 message LoginRequest {
   string email = 1;
   string password = 2;
-}
-
-message Success {
-  bool success = 1;
-  string data = 2;
 }

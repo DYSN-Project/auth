@@ -1,5 +1,6 @@
 package jwt
 
+/*
 import (
 	"github.com/DYSN-Project/auth/internal/packages/jwt/claims"
 	"github.com/golang-jwt/jwt"
@@ -117,3 +118,4 @@ func TestVerify(t *testing.T) {
 		assert.Equal(t, true, isValid)
 	}
 }
+*/

@@ -6,6 +6,8 @@ import (
 	"github.com/DYSN-Project/auth/internal/packages/log"
 	"github.com/DYSN-Project/auth/internal/server/grpc/pb"
 	"github.com/DYSN-Project/auth/internal/usecases"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type AuthServer struct {
@@ -43,14 +45,16 @@ func (a *AuthServer) ConfirmRegister(_ context.Context, request *pb.Token) (*pb.
 		return nil, err
 	}
 
-	confirmedUser, err := a.useCaseManager.ConfirmRegister(tokenForm.Token)
+	user, err := a.useCaseManager.ConfirmRegister(tokenForm.Token)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.User{
-		Email:  confirmedUser.Email,
-		UserId: confirmedUser.ID,
+		Email:     user.Email,
+		Id:        user.ID.String(),
+		CreatedAt: timestamppb.New(user.CreatedAt),
+		Status:    int32(user.Status),
 	}, nil
 }
 
@@ -88,16 +92,15 @@ func (a *AuthServer) UpdateTokens(_ context.Context, request *pb.Token) (*pb.Tok
 	}, nil
 }
 
-func (a *AuthServer) Verify(_ context.Context, request *pb.Token) (*pb.Success, error) {
+func (a *AuthServer) Verify(_ context.Context, request *pb.Token) (*emptypb.Empty, error) {
 	tokenForm := forms.NewTokenForm(request.GetToken())
 	if err := tokenForm.Validate(); err != nil {
 		return nil, err
 	}
 
-	validToken, err := a.useCaseManager.Verify(tokenForm.Token)
+	if err := a.useCaseManager.Verify(tokenForm.Token); err != nil {
+		return nil, err
+	}
 
-	return &pb.Success{
-		Success: validToken,
-		Data:    "",
-	}, err
+	return &emptypb.Empty{}, nil
 }
