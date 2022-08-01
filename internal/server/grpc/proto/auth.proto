@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option go_package = "/grpc/pb;pb";
+
+package auth;
+
+service Auth {
+  rpc Register(RegisterRequest) returns (Token);
+  rpc ConfirmRegister(Token) returns (User);
+  rpc Login(LoginRequest) returns (Tokens);
+  rpc Verify(Token) returns (Success);
+  rpc UpdateTokens(Token) returns (Tokens);
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message ConfirmRegisterResponse {
+  Tokens tokens = 1;
+}
+
+message Token {
+  string token = 1;
+}
+
+message User {
+  int64 userId = 1;
+  string email = 2;
+}
+
+message Tokens {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message Success {
+  bool success = 1;
+  string data = 2;
+}

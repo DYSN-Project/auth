@@ -1,2 +1,2 @@
-# auth
-microsiervice for authorization
+# auth-microservice
+auth microservice in go
