@@ -21,7 +21,7 @@ func Run(ctx context.Context) {
 	database := db.StartDB(cfg, logger)
 	defer db.CloseDB(database, logger)
 
-	jwtService := jwt.NewJwtService(cfg.GetJwtAccessSecretKey(), cfg.GetJwtRegSecretKey())
+	jwtService := jwt.NewJwtService()
 
 	userRepo := repository.NewUserRepository(database)
 	useCaseManager := usecases.NewUseCase(cfg, jwtService, userRepo, logger)

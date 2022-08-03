@@ -19,7 +19,7 @@ func NewAuthClaims(userId uuid.UUID, duration time.Duration) *AuthClaims {
 	return &AuthClaims{
 		StandardClaims: jwt.StandardClaims{
 			IssuedAt:  time.Now().Unix(),
-			ExpiresAt: time.Now().Add(time.Second * duration).Unix(),
+			ExpiresAt: time.Now().Add(duration).Unix(),
 		},
 		Uid: userId,
 	}

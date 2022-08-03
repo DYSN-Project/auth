@@ -26,7 +26,7 @@ func (e *Config) GetJwtRefreshSecretKey() string {
 }
 
 func (e *Config) GetJwtRegSecretKey() string {
-	return os.Getenv("JWT_REG_SECRET_KEY")
+	return os.Getenv("JWT_REGISTER_SECRET_KEY")
 }
 
 func (e *Config) GetDbHost() string {

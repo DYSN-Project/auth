@@ -19,7 +19,7 @@ func NewRegisterClaims(email string, password string, duration time.Duration) *R
 	return &RegisterClaims{
 		StandardClaims: jwt.StandardClaims{
 			IssuedAt:  time.Now().Unix(),
-			ExpiresAt: time.Now().Add(time.Second * duration).Unix(),
+			ExpiresAt: time.Now().Add(duration).Unix(),
 		},
 		Email:    email,
 		Password: password,

@@ -2,9 +2,7 @@ package jwt
 
 import (
 	"errors"
-	"github.com/DYSN-Project/auth/internal/packages/jwt/claims"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"time"
 )
 
@@ -15,47 +13,30 @@ var (
 )
 
 type JwtInterface interface {
-	GenerateAuthToken(userId uuid.UUID, duration time.Duration) (string, error)
-	GenerateRegisterToken(email, password string, duration time.Duration) (string, error)
-	GenerateToken(claims jwt.Claims, secretKey string) (string, error)
-	ParseRegisterToken(strToken string) (*claims.RegisterClaims, error)
-	ParseAuthToken(strToken string) (*claims.AuthClaims, error)
+	GenerateToken(data map[string]interface{},
+		secretKey string,
+		duration time.Duration) (string, error)
+	ParseToken(strToken string, key string) (map[string]interface{}, error)
 	Verify(strToken string, secretKey string) (bool, error)
 }
 
-type JwtService struct {
-	authSecretKey     string
-	registerSecretKey string
+type JwtService struct{}
+
+func NewJwtService() *JwtService {
+	return &JwtService{}
 }
 
-func NewJwtService(authSecretKey, registerSecretKey string) *JwtService {
-	return &JwtService{
-		authSecretKey:     authSecretKey,
-		registerSecretKey: registerSecretKey,
-	}
-}
+func (j *JwtService) GenerateToken(data map[string]interface{},
+	secretKey string,
+	duration time.Duration) (string, error) {
+	cls := j.getClaims(data, duration)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, cls)
 
-func (j *JwtService) GenerateAuthToken(userId uuid.UUID, duration time.Duration) (string, error) {
-	clms := claims.NewAuthClaims(userId, duration)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, clms)
-
-	return token.SignedString([]byte(j.authSecretKey))
-}
-
-func (j *JwtService) GenerateRegisterToken(email, password string, duration time.Duration) (string, error) {
-	clms := claims.NewRegisterClaims(email, password, duration)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, clms)
-
-	return token.SignedString([]byte(j.registerSecretKey))
-}
-
-func (j *JwtService) GenerateToken(claims jwt.Claims, secretKey string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secretKey))
 }
 
-func (j *JwtService) ParseRegisterToken(strToken string) (*claims.RegisterClaims, error) {
-	token, err := j.parse(strToken, claims.NewRegisterClaimsIngot(), j.registerSecretKey)
+func (j *JwtService) ParseToken(strToken string, key string) (map[string]interface{}, error) {
+	token, err := j.parse(strToken, jwt.MapClaims{}, key)
 	if err != nil {
 		return nil, err
 	}
@@ -63,24 +44,7 @@ func (j *JwtService) ParseRegisterToken(strToken string) (*claims.RegisterClaims
 		return nil, errTokenInvalid
 	}
 
-	clms, ok := token.Claims.(*claims.RegisterClaims)
-	if !ok {
-		return nil, errClaims
-	}
-
-	return clms, nil
-}
-
-func (j *JwtService) ParseAuthToken(strToken string) (*claims.AuthClaims, error) {
-	token, err := j.parse(strToken, claims.NewAuthClaimsIngot(), j.authSecretKey)
-	if err != nil {
-		return nil, err
-	}
-	if !token.Valid {
-		return nil, errTokenInvalid
-	}
-
-	clms, ok := token.Claims.(*claims.AuthClaims)
+	clms, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, errClaims
 	}
@@ -106,4 +70,14 @@ func (j *JwtService) parse(strToken string, model jwt.Claims, key string) (*jwt.
 	})
 
 	return token, parseErr
+}
+
+func (j *JwtService) getClaims(data map[string]interface{}, dur time.Duration) jwt.MapClaims {
+	cls := jwt.MapClaims{}
+	for k, v := range data {
+		cls[k] = v
+	}
+	cls["exp"] = time.Now().Add(dur).Unix()
+
+	return cls
 }
