@@ -1,4 +1,4 @@
-package usecases
+package service
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"github.com/DYSN-Project/auth/internal/helpers"
 	"github.com/DYSN-Project/auth/internal/models"
 	"github.com/DYSN-Project/auth/internal/models/consts"
-	"github.com/DYSN-Project/auth/internal/packages/jwt"
-	"github.com/DYSN-Project/auth/internal/packages/log"
 	"github.com/DYSN-Project/auth/internal/repository"
+	"github.com/DYSN-Project/auth/pkg/jwt"
+	"github.com/DYSN-Project/auth/pkg/log"
 	"github.com/google/uuid"
 )
 

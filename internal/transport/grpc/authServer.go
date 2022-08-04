@@ -3,20 +3,20 @@ package grpc
 import (
 	"context"
 	"github.com/DYSN-Project/auth/internal/models/forms"
-	"github.com/DYSN-Project/auth/internal/packages/log"
-	"github.com/DYSN-Project/auth/internal/server/grpc/pb"
-	"github.com/DYSN-Project/auth/internal/usecases"
+	"github.com/DYSN-Project/auth/internal/service"
+	"github.com/DYSN-Project/auth/internal/transport/grpc/pb"
+	"github.com/DYSN-Project/auth/pkg/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type AuthServer struct {
-	useCaseManager usecases.UseCaseInterface
+	useCaseManager service.UseCaseInterface
 	logger         *log.Logger
 	pb.UnimplementedAuthServer
 }
 
-func NewAuthServer(useCaseManager usecases.UseCaseInterface, logger *log.Logger) *AuthServer {
+func NewAuthServer(useCaseManager service.UseCaseInterface, logger *log.Logger) *AuthServer {
 	return &AuthServer{
 		useCaseManager: useCaseManager,
 		logger:         logger,

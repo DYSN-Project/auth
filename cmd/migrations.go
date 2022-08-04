@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/internal/packages/db"
-	"github.com/DYSN-Project/auth/internal/packages/log"
+	"github.com/DYSN-Project/auth/pkg/db"
+	"github.com/DYSN-Project/auth/pkg/log"
 	"github.com/pressly/goose"
 	"github.com/spf13/cobra"
 )

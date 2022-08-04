@@ -2,7 +2,7 @@ package jwt
 
 /*
 import (
-	"github.com/DYSN-Project/auth/internal/packages/jwt/claims"
+	"github.com/DYSN-Project/auth/internal/pkg/jwt/claims"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"testing"

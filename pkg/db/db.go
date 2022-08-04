@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/internal/packages/log"
+	"github.com/DYSN-Project/auth/pkg/log"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )

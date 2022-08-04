@@ -83,7 +83,7 @@ func (c *authClient) UpdateTokens(ctx context.Context, in *Token, opts ...grpc.C
 	return out, nil
 }
 
-// AuthServer is the server API for Auth service.
+// AuthServer is the transport API for Auth service.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility
 type AuthServer interface {
