@@ -1,5 +1,9 @@
 version: "3.7"
 
+networks:
+  dysn:
+    name: docker_dysn
+
 services:
   database:
     image: postgres
@@ -14,6 +18,10 @@ services:
       - ${POSTGRES_PORT:-5433}:5432
     volumes:
       - dysn_auth_db:/var/lib/postgresql/data
+    networks:
+      - dysn
+
+
   dysn_auth:
     build:
       context: .
@@ -23,7 +31,7 @@ services:
     depends_on:
       - database
     networks:
-      - default
+      - dysn
     ports:
       - "5301:5301"
     volumes:
