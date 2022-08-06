@@ -24,9 +24,10 @@ func Run(ctx context.Context) {
 	jwtService := jwt.NewJwtService()
 
 	userRepo := repository.NewUserRepository(database)
-	useCaseManager := service.NewUseCase(cfg, jwtService, userRepo, logger)
+	authSrv := service.NewAuthorization(cfg, jwtService, userRepo, logger)
+	registerSrv := service.NewRegistration(cfg, jwtService, userRepo, logger)
 
-	srv := grpc.NewGrpcServer(cfg.GetGrpcPort(), useCaseManager, logger)
+	srv := grpc.NewGrpcServer(cfg.GetGrpcPort(), authSrv, registerSrv, logger)
 	go srv.StartServer()
 	defer srv.StopServer()
 

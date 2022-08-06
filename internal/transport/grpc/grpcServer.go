@@ -19,10 +19,13 @@ type GrpcServer struct {
 	logger *log.Logger
 }
 
-func NewGrpcServer(port string, useCaseManager service.UseCaseInterface, logger *log.Logger) *GrpcServer {
+func NewGrpcServer(port string,
+	authSrv service.AuthorizationInterface,
+	registerSrv service.RegistrationInterface,
+	logger *log.Logger) *GrpcServer {
 	srv := grpc.NewServer()
-	authSrv := NewAuthServer(useCaseManager, logger)
-	pb.RegisterAuthServer(srv, authSrv)
+	authServer := NewAuthServer(authSrv, registerSrv, logger)
+	pb.RegisterAuthServer(srv, authServer)
 
 	return &GrpcServer{server: srv, port: port, logger: logger}
 }

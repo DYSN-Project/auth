@@ -1,15 +1,15 @@
 package repository
 
 import (
-	"github.com/DYSN-Project/auth/internal/models"
+	"github.com/DYSN-Project/auth/internal/model/entity"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
 
 type UserRepoInterface interface {
-	GetUserByEmail(email string) *models.User
-	GetUserById(id uuid.UUID) *models.User
-	CreateUser(user *models.User) (*models.User, error)
+	GetUserByEmail(email string) *entity.User
+	GetUserById(id uuid.UUID) *entity.User
+	CreateUser(user *entity.User) (*entity.User, error)
 }
 
 type UserRepository struct {
@@ -22,21 +22,21 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	}
 }
 
-func (u *UserRepository) GetUserByEmail(email string) *models.User {
-	user := models.NewUserIngot()
+func (u *UserRepository) GetUserByEmail(email string) *entity.User {
+	user := entity.NewUserIngot()
 	u.db.Where("email = ?", email).First(user)
 
 	return user
 }
 
-func (u *UserRepository) GetUserById(id uuid.UUID) *models.User {
-	user := models.NewUserIngot()
+func (u *UserRepository) GetUserById(id uuid.UUID) *entity.User {
+	user := entity.NewUserIngot()
 	u.db.Where("id = ?", id).First(user)
 
 	return user
 }
 
-func (u *UserRepository) CreateUser(user *models.User) (*models.User, error) {
+func (u *UserRepository) CreateUser(user *entity.User) (*entity.User, error) {
 	if err := u.db.Create(user).Error; err != nil {
 		return nil, err
 	}

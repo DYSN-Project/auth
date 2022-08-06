@@ -21,12 +21,12 @@ func newDb(cfg *config.Config, logger *log.Logger) *gorm.DB {
 		cfg.GetDbPassword(),
 	)
 
-	db, err := gorm.Open("postgres", url)
+	database, err := gorm.Open("postgres", url)
 	if err != nil {
 		logger.ErrorLog.Panic(err)
 	}
 
-	return db
+	return database
 }
 
 func StartDB(cfg *config.Config, logger *log.Logger) *gorm.DB {

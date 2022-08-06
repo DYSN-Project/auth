@@ -1,1 +1,1 @@
-protoc -I ../internal/server/grpc/proto/ auth.proto  --go-grpc_out=../internal/server --go_out=../internal/server
+protoc -I ../internal/transport/grpc/proto/ auth.proto  --go-grpc_out=../internal/transport --go_out=../internal/transport

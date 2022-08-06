@@ -1,4 +1,4 @@
-package forms
+package dto
 
 import (
 	"fmt"
@@ -10,21 +10,19 @@ import (
 
 const minPasswordEntropy = 60
 
-type RegisterForm struct {
+type Register struct {
 	Email    string `form:"email" json:"email"`
 	Password string `form:"password" json:"password"`
 }
 
-func NewRegisterForm(email string, password string) *RegisterForm {
+func NewRegister(email string, password string) *Register {
 	email = strings.TrimSpace(strings.ToLower(email))
 	password = strings.TrimSpace(password)
-	return &RegisterForm{email, password}
+
+	return &Register{email, password}
 }
 
-func NewRegisterFormIngot() *RegisterForm {
-	return &RegisterForm{}
-}
-func (r *RegisterForm) Validate() error {
+func (r *Register) Validate() error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Email, validation.Required, is.Email),
 		validation.Field(&r.Password, validation.Required, validation.By(checkPassword)))

@@ -1,4 +1,4 @@
-package forms
+package dto
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -6,23 +6,19 @@ import (
 	"strings"
 )
 
-type LoginForm struct {
+type Login struct {
 	Email    string `form:"email" json:"email"`
 	Password string `form:"password" json:"password"`
 }
 
-func NewLoginForm(email string, password string) *LoginForm {
+func NewLogin(email string, password string) *Login {
 	email = strings.TrimSpace(strings.ToLower(email))
 	password = strings.TrimSpace(password)
 
-	return &LoginForm{email, password}
+	return &Login{email, password}
 }
 
-func NewLoginFormIngot() *LoginForm {
-	return &LoginForm{}
-}
-
-func (l *LoginForm) Validate() error {
+func (l *Login) Validate() error {
 	return validation.ValidateStruct(l,
 		validation.Field(&l.Email, validation.Required, is.Email),
 		validation.Field(&l.Password, validation.Required))

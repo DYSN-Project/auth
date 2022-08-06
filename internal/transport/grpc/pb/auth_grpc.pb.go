@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -26,8 +25,8 @@ type AuthClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Token, error)
 	ConfirmRegister(ctx context.Context, in *Token, opts ...grpc.CallOption) (*User, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Tokens, error)
-	Verify(ctx context.Context, in *Token, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	UpdateTokens(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Tokens, error)
+	VerifyTokenAndGetId(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Identity, error)
+	RefreshTokens(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Tokens, error)
 }
 
 type authClient struct {
@@ -65,33 +64,33 @@ func (c *authClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *authClient) Verify(ctx context.Context, in *Token, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/auth.Auth/Verify", in, out, opts...)
+func (c *authClient) VerifyTokenAndGetId(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Identity, error) {
+	out := new(Identity)
+	err := c.cc.Invoke(ctx, "/auth.Auth/VerifyTokenAndGetId", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authClient) UpdateTokens(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Tokens, error) {
+func (c *authClient) RefreshTokens(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Tokens, error) {
 	out := new(Tokens)
-	err := c.cc.Invoke(ctx, "/auth.Auth/UpdateTokens", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/auth.Auth/RefreshTokens", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// AuthServer is the transport API for Auth service.
+// AuthServer is the server API for Auth service.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility
 type AuthServer interface {
 	Register(context.Context, *RegisterRequest) (*Token, error)
 	ConfirmRegister(context.Context, *Token) (*User, error)
 	Login(context.Context, *LoginRequest) (*Tokens, error)
-	Verify(context.Context, *Token) (*emptypb.Empty, error)
-	UpdateTokens(context.Context, *Token) (*Tokens, error)
+	VerifyTokenAndGetId(context.Context, *Token) (*Identity, error)
+	RefreshTokens(context.Context, *Token) (*Tokens, error)
 	mustEmbedUnimplementedAuthServer()
 }
 
@@ -108,11 +107,11 @@ func (UnimplementedAuthServer) ConfirmRegister(context.Context, *Token) (*User, 
 func (UnimplementedAuthServer) Login(context.Context, *LoginRequest) (*Tokens, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedAuthServer) Verify(context.Context, *Token) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
+func (UnimplementedAuthServer) VerifyTokenAndGetId(context.Context, *Token) (*Identity, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyTokenAndGetId not implemented")
 }
-func (UnimplementedAuthServer) UpdateTokens(context.Context, *Token) (*Tokens, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateTokens not implemented")
+func (UnimplementedAuthServer) RefreshTokens(context.Context, *Token) (*Tokens, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshTokens not implemented")
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
 
@@ -181,38 +180,38 @@ func _Auth_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Auth_VerifyTokenAndGetId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Token)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServer).Verify(ctx, in)
+		return srv.(AuthServer).VerifyTokenAndGetId(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.Auth/Verify",
+		FullMethod: "/auth.Auth/VerifyTokenAndGetId",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServer).Verify(ctx, req.(*Token))
+		return srv.(AuthServer).VerifyTokenAndGetId(ctx, req.(*Token))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UpdateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Auth_RefreshTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Token)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServer).UpdateTokens(ctx, in)
+		return srv.(AuthServer).RefreshTokens(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.Auth/UpdateTokens",
+		FullMethod: "/auth.Auth/RefreshTokens",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServer).UpdateTokens(ctx, req.(*Token))
+		return srv.(AuthServer).RefreshTokens(ctx, req.(*Token))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -237,12 +236,12 @@ var Auth_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Auth_Login_Handler,
 		},
 		{
-			MethodName: "Verify",
-			Handler:    _Auth_Verify_Handler,
+			MethodName: "VerifyTokenAndGetId",
+			Handler:    _Auth_VerifyTokenAndGetId_Handler,
 		},
 		{
-			MethodName: "UpdateTokens",
-			Handler:    _Auth_UpdateTokens_Handler,
+			MethodName: "RefreshTokens",
+			Handler:    _Auth_RefreshTokens_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -1,7 +1,7 @@
-package models
+package entity
 
 import (
-	"github.com/DYSN-Project/auth/internal/models/consts"
+	"github.com/DYSN-Project/auth/internal/model/consts"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"time"
@@ -52,6 +52,12 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 	u.ID = uuid.New()
 	u.CreatedAt = time.Now()
 	u.Status = consts.UserStatusActive
+
+	return
+}
+
+func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
+	u.UpdatedAt = time.Now()
 
 	return
 }

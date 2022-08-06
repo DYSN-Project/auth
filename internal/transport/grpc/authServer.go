@@ -2,34 +2,37 @@ package grpc
 
 import (
 	"context"
-	"github.com/DYSN-Project/auth/internal/models/forms"
+	"github.com/DYSN-Project/auth/internal/model/dto"
 	"github.com/DYSN-Project/auth/internal/service"
 	"github.com/DYSN-Project/auth/internal/transport/grpc/pb"
 	"github.com/DYSN-Project/auth/pkg/log"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type AuthServer struct {
-	useCaseManager service.UseCaseInterface
-	logger         *log.Logger
+	registerSrv service.RegistrationInterface
+	authSrv     service.AuthorizationInterface
+	logger      *log.Logger
 	pb.UnimplementedAuthServer
 }
 
-func NewAuthServer(useCaseManager service.UseCaseInterface, logger *log.Logger) *AuthServer {
+func NewAuthServer(authSrv service.AuthorizationInterface,
+	registerSrv service.RegistrationInterface,
+	logger *log.Logger) *AuthServer {
 	return &AuthServer{
-		useCaseManager: useCaseManager,
-		logger:         logger,
+		authSrv:     authSrv,
+		registerSrv: registerSrv,
+		logger:      logger,
 	}
 }
 
 func (a *AuthServer) Register(_ context.Context, request *pb.RegisterRequest) (*pb.Token, error) {
-	registerForm := forms.NewRegisterForm(request.GetEmail(), request.GetPassword())
-	if err := registerForm.Validate(); err != nil {
+	registerDto := dto.NewRegister(request.GetEmail(), request.GetPassword())
+	if err := registerDto.Validate(); err != nil {
 		return nil, err
 	}
 
-	token, err := a.useCaseManager.RegisterUser(registerForm.Email, registerForm.Password)
+	token, err := a.registerSrv.Register(registerDto.Email, registerDto.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -40,12 +43,12 @@ func (a *AuthServer) Register(_ context.Context, request *pb.RegisterRequest) (*
 }
 
 func (a *AuthServer) ConfirmRegister(_ context.Context, request *pb.Token) (*pb.User, error) {
-	tokenForm := forms.NewTokenForm(request.GetToken())
-	if err := tokenForm.Validate(); err != nil {
+	tokenDto := dto.NewToken(request.GetToken())
+	if err := tokenDto.Validate(); err != nil {
 		return nil, err
 	}
 
-	user, err := a.useCaseManager.ConfirmRegister(tokenForm.Token)
+	user, err := a.registerSrv.ConfirmRegister(tokenDto.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +62,12 @@ func (a *AuthServer) ConfirmRegister(_ context.Context, request *pb.Token) (*pb.
 }
 
 func (a *AuthServer) Login(_ context.Context, request *pb.LoginRequest) (*pb.Tokens, error) {
-	loginForm := forms.NewLoginForm(request.GetEmail(), request.GetPassword())
-	if err := loginForm.Validate(); err != nil {
+	loginDto := dto.NewLogin(request.GetEmail(), request.GetPassword())
+	if err := loginDto.Validate(); err != nil {
 		return nil, err
 	}
 
-	tokens, err := a.useCaseManager.Login(loginForm.Email, loginForm.Password)
+	tokens, err := a.authSrv.Login(loginDto.Email, loginDto.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -75,13 +78,13 @@ func (a *AuthServer) Login(_ context.Context, request *pb.LoginRequest) (*pb.Tok
 	}, nil
 }
 
-func (a *AuthServer) UpdateTokens(_ context.Context, request *pb.Token) (*pb.Tokens, error) {
-	tokenForm := forms.NewTokenForm(request.GetToken())
-	if err := tokenForm.Validate(); err != nil {
+func (a *AuthServer) RefreshTokens(_ context.Context, request *pb.Token) (*pb.Tokens, error) {
+	tokenDto := dto.NewToken(request.GetToken())
+	if err := tokenDto.Validate(); err != nil {
 		return nil, err
 	}
 
-	tokens, err := a.useCaseManager.GetTokensByRefresh(tokenForm.Token)
+	tokens, err := a.authSrv.GetTokensByRefresh(tokenDto.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -92,15 +95,18 @@ func (a *AuthServer) UpdateTokens(_ context.Context, request *pb.Token) (*pb.Tok
 	}, nil
 }
 
-func (a *AuthServer) Verify(_ context.Context, request *pb.Token) (*emptypb.Empty, error) {
-	tokenForm := forms.NewTokenForm(request.GetToken())
-	if err := tokenForm.Validate(); err != nil {
+func (a *AuthServer) VerifyTokenAndGetId(_ context.Context, request *pb.Token) (*pb.Identity, error) {
+	tokenDto := dto.NewToken(request.GetToken())
+	if err := tokenDto.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := a.useCaseManager.Verify(tokenForm.Token); err != nil {
+	userId, err := a.authSrv.VerifyAndGetId(tokenDto.Token)
+	if err != nil {
 		return nil, err
 	}
 
-	return &emptypb.Empty{}, nil
+	return &pb.Identity{
+		UserId: userId.String(),
+	}, nil
 }

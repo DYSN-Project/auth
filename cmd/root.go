@@ -12,7 +12,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "Init auth microservice",
-	Short: "Authorisation microservice ",
+	Short: "Authorisation microservice",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
