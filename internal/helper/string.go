@@ -24,3 +24,12 @@ func RandStringRunes(n int) string {
 	}
 	return string(b)
 }
+
+func RandStringBytesRmndr(n int) string {
+	letterBytes := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+	}
+	return string(b)
+}

@@ -2,13 +2,14 @@ package app
 
 import (
 	"context"
-	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/internal/repository"
-	"github.com/DYSN-Project/auth/internal/service"
-	"github.com/DYSN-Project/auth/internal/transport/grpc"
-	"github.com/DYSN-Project/auth/pkg/db"
-	"github.com/DYSN-Project/auth/pkg/jwt"
-	"github.com/DYSN-Project/auth/pkg/log"
+	"dysn/auth/config"
+	"dysn/auth/internal/repository"
+	"dysn/auth/internal/service"
+	"dysn/auth/internal/transport/grpc/client"
+	"dysn/auth/internal/transport/grpc/server"
+	"dysn/auth/pkg/db"
+	"dysn/auth/pkg/jwt"
+	"dysn/auth/pkg/log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,16 +19,25 @@ func Run(ctx context.Context) {
 	cfg := config.NewConfig()
 
 	logger := log.NewLogger()
+	jwtService := jwt.NewJwtService()
+
 	database := db.StartDB(cfg, logger)
 	defer db.CloseDB(database, logger)
 
-	jwtService := jwt.NewJwtService()
-
 	userRepo := repository.NewUserRepository(database)
-	authSrv := service.NewAuthorization(cfg, jwtService, userRepo, logger)
-	registerSrv := service.NewRegistration(cfg, jwtService, userRepo, logger)
+	recoveryRepo := repository.NewRecoveryRepository(database)
 
-	srv := grpc.NewGrpcServer(cfg.GetGrpcPort(), authSrv, registerSrv, logger)
+	notifyCli := client.NewNotify(cfg.GetNotifyAddress(), logger)
+
+	authSrv := service.NewAuth(cfg, jwtService, userRepo, logger)
+	registerSrv := service.NewRegister(cfg, jwtService, userRepo, logger, notifyCli)
+	recoverySrv := service.NewRecovery(cfg, userRepo, recoveryRepo, notifyCli, logger)
+
+	srv := server.NewGrpc(cfg.GetGrpcPort(),
+		authSrv,
+		registerSrv,
+		recoverySrv,
+		logger)
 	go srv.StartServer()
 	defer srv.StopServer()
 

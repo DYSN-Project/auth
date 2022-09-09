@@ -1,9 +1,9 @@
 package db
 
 import (
+	"dysn/auth/config"
+	"dysn/auth/pkg/log"
 	"fmt"
-	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/pkg/log"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -34,6 +34,10 @@ func StartDB(cfg *config.Config, logger *log.Logger) *gorm.DB {
 		db = newDb(cfg, logger)
 	}
 	logger.InfoLog.Println("Connecting to database...")
+
+	if err := db.DB().Ping(); err != nil {
+		panic(err)
+	}
 
 	return db
 }

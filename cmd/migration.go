@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/pkg/db"
-	"github.com/DYSN-Project/auth/pkg/log"
+	"dysn/auth/config"
+	"dysn/auth/pkg/db"
+	"dysn/auth/pkg/log"
 	"github.com/pressly/goose"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +16,9 @@ var mgrCmd = &cobra.Command{
 		cfg := config.NewConfig()
 		logger := log.NewLogger()
 		database := db.StartDB(cfg, logger)
+
 		defer db.CloseDB(database, logger)
+
 		if err := goose.Run(args[0], database.DB(), path, args[1:]...); err != nil {
 			panic(err)
 		}

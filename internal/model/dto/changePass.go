@@ -7,23 +7,24 @@ import (
 	"strings"
 )
 
-type Login struct {
+type ChangePass struct {
 	Email    string `form:"email" json:"email"`
 	Password string `form:"password" json:"password"`
 }
 
-func NewLogin(email, password string) *Login {
-	return &Login{
+func NewChangePass(email, password string) *ChangePass {
+	return &ChangePass{
 		Email:    strings.TrimSpace(strings.ToLower(email)),
 		Password: strings.TrimSpace(password),
 	}
 }
 
-func (l *Login) Validate() error {
+func (l *ChangePass) Validate() error {
 	return validation.ValidateStruct(l,
 		validation.Field(&l.Email,
 			validation.Required.Error(consts.ErrFieldRequired),
 			is.Email.Error(consts.ErrFieldIncorrectFormat)),
 		validation.Field(&l.Password,
-			validation.Required.Error(consts.ErrFieldRequired)))
+			validation.Required.Error(consts.ErrFieldRequired),
+			validation.By(checkPassword)))
 }

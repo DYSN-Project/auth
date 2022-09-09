@@ -1,105 +1,126 @@
 package service
 
 import (
-	"github.com/DYSN-Project/auth/config"
-	"github.com/DYSN-Project/auth/internal/helper"
-	"github.com/DYSN-Project/auth/internal/model/entity"
-	"github.com/DYSN-Project/auth/internal/repository"
-	"github.com/DYSN-Project/auth/pkg/jwt"
-	"github.com/DYSN-Project/auth/pkg/log"
+	"dysn/auth/config"
+	"dysn/auth/internal/helper"
+	"dysn/auth/internal/model/entity"
+	"dysn/auth/internal/repository"
+	"dysn/auth/internal/transport/grpc/client"
+	"dysn/auth/pkg/jwt"
+	"dysn/auth/pkg/log"
 	"github.com/google/uuid"
 )
 
-type RegistrationInterface interface {
-	Register(email string, password string) (string, error)
-	ConfirmRegister(token string) (*entity.User, error)
+type RegisterInterface interface {
+	RegisterUser(email, password, lang string) (*entity.User, error)
+	ConfirmRegister(email, password, code string) (*entity.Tokens, error)
 }
 
-type Registration struct {
+type Register struct {
 	cfg        *config.Config
 	jwtService jwt.JwtInterface
 	userRepo   repository.UserRepoInterface
 	logger     *log.Logger
+	notify     *client.Notify
+	BaseService
 }
 
-func NewRegistration(cfg *config.Config,
+func NewRegister(cfg *config.Config,
 	jwtSrv jwt.JwtInterface,
 	usrRepo repository.UserRepoInterface,
-	logger *log.Logger) *Registration {
-	return &Registration{
+	logger *log.Logger,
+	notify *client.Notify) *Register {
+	return &Register{
 		cfg:        cfg,
 		jwtService: jwtSrv,
 		userRepo:   usrRepo,
 		logger:     logger,
+		notify:     notify,
 	}
 }
 
-func (r *Registration) Register(email string, password string) (string, error) {
+func (r *Register) RegisterUser(email, password, lang string) (*entity.User, error) {
 	existUser := r.userRepo.GetUserByEmail(email)
 	if !existUser.IsEmpty() {
-		return "", errUserAlreadyExist
+		return nil, helper.MakeGrpcBadRequestError(errAlreadyConfirmed)
 	}
 
-	passwordHash, err := helper.GetPwdHash(password, r.cfg.GetPwdSalt())
+	passwordHash, err := helper.GetHash(password, r.cfg.GetPwdSalt())
 	if err != nil {
 		r.logger.ErrorLog.Println("hash password error: ", err)
 
-		return "", errInternalServer
-	}
-	regClaims := map[string]interface{}{
-		"email": email,
-		"pwd":   passwordHash,
-	}
-	token, err := r.jwtService.GenerateToken(regClaims,
-		r.cfg.GetJwtRegSecretKey(),
-		r.cfg.GetRegisterDuration(),
-	)
-	if err != nil {
-		r.logger.ErrorLog.Println("generate token error: ", err)
-
-		return "", errInternalServer
+		return nil, err
 	}
 
-	return token, nil
-}
+	code := helper.RandStringInt(r.cfg.GetCodeLength())
+	codeHash, _ := helper.GetHash(code, r.cfg.GetCodeSalt())
 
-func (r *Registration) ConfirmRegister(token string) (*entity.User, error) {
-	tokenClaims, err := r.jwtService.ParseToken(token, r.cfg.GetJwtRegSecretKey())
-	if err != nil {
-		r.logger.ErrorLog.Println("parse token error: ", err)
-
-		return nil, errTokenInvalid
-	}
-
-	if _, ok := tokenClaims["email"]; !ok {
-		return nil, errTokenInvalid
-	}
-	email := tokenClaims["email"].(string)
-
-	if _, ok := tokenClaims["pwd"]; !ok {
-		return nil, errTokenInvalid
-	}
-	pwd := tokenClaims["pwd"].(string)
-
-	existUser := r.userRepo.GetUserByEmail(email)
-	if !existUser.IsEmpty() {
-		return nil, errUserAlreadyExist
-	}
-
-	user := entity.NewUser(email, pwd)
+	user := entity.NewUser(email, passwordHash, codeHash, lang)
 	user, err = r.userRepo.CreateUser(user)
 	if err != nil {
-		r.logger.ErrorLog.Println("create user error: ", err)
+		r.logger.ErrorLog.Println("Save user error: ", err)
 
-		return nil, errInternalServer
+		return nil, err
 	}
+
+	r.notifyConfirmRegister(user.Email, code, lang)
 
 	return user, nil
 }
 
-func (r *Registration) getTokens(userId uuid.UUID) (*entity.Tokens, error) {
+func (r *Register) ConfirmRegister(email, password, code string) (*entity.Tokens, error) {
+	user := r.userRepo.GetUserByEmail(email)
+	if user.IsEmpty() {
+		return nil, helper.MakeGrpcBadRequestError(errInvalidUserData)
+	}
+	if user.IsConfirmed {
+		return nil, helper.MakeGrpcBadRequestError(errAlreadyConfirmed)
+	}
+
+	err := helper.CompareHash(password, user.Password, r.cfg.GetPwdSalt())
+	if err != nil {
+		return nil, helper.MakeGrpcBadRequestError(errInvalidUserData)
+	}
+	if !r.compareCode(code, user) {
+		return nil, helper.MakeGrpcBadRequestError(errInvalidUserCode)
+	}
+
+	if err = r.userRepo.ConfirmUser(user.Id); err != nil {
+		r.logger.ErrorLog.Println("confirm user error: ", err)
+
+		return nil, errInternalServer
+	}
+
+	tokens, err := r.getTokens(user.Id, user.Lang)
+	if err != nil {
+		r.logger.ErrorLog.Println("generate tokens error: ", err)
+
+		return nil, errInternalServer
+	}
+
+	r.logger.InfoLog.Println("New user was registered: ", user.Email)
+
+	return tokens, nil
+}
+
+func (r *Register) notifyConfirmRegister(email, code, lang string) {
+	go func() {
+		err := r.notify.ConfirmRegister(email, code, lang)
+		if err != nil {
+			r.logger.ErrorLog.Printf("Sending confirm register for $s error: $s ", email, err)
+
+			return
+		}
+		r.logger.InfoLog.Printf("notify for %s was sent", email)
+
+		return
+	}()
+}
+
+func (r *Register) getTokens(userId uuid.UUID, lang string) (*entity.Tokens, error) {
 	data := map[string]interface{}{
-		"uid": userId.String(),
+		"uid":  userId.String(),
+		"lang": lang,
 	}
 	accessToken, err := r.jwtService.GenerateToken(data, r.cfg.GetJwtAccessSecretKey(), r.cfg.GetAccessDuration())
 	if err != nil {
@@ -112,4 +133,10 @@ func (r *Registration) getTokens(userId uuid.UUID) (*entity.Tokens, error) {
 	}
 
 	return entity.NewTokens(accessToken, refreshToken), nil
+}
+
+func (r *Register) compareCode(code string, user *entity.User) bool {
+	return helper.CompareHash(code,
+		user.ConfirmCode,
+		r.cfg.GetCodeSalt()) == nil
 }

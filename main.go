@@ -1,6 +1,8 @@
 package main
 
-import "github.com/DYSN-Project/auth/cmd"
+import (
+	"dysn/auth/cmd"
+)
 
 func main() {
 	cmd.Execute()

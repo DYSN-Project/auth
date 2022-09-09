@@ -2,17 +2,16 @@ package cmd
 
 import (
 	"context"
-	"github.com/DYSN-Project/auth/app"
+	"dysn/auth/app"
+	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "Init auth microservice",
-	Short: "Authorisation microservice",
+	Use:   "Init microservice",
+	Short: "Init microservice",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
@@ -33,15 +32,9 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
-}
-
-func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

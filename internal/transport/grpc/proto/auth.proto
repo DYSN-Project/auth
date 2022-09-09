@@ -1,31 +1,31 @@
 syntax = "proto3";
 
-option go_package = "/grpc/pb;pb";
+option go_package = "/grpc/pb/auth;pb";
 
-/*import "google/protobuf/empty.proto";*/
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 package auth;
 
 service Auth {
-  rpc Register(RegisterRequest) returns (Token);
-  rpc ConfirmRegister(Token) returns (User);
+  rpc Register(RegisterRequest) returns (User);
+  rpc ConfirmRegister(ConfirmRequest) returns (Tokens);
+
   rpc Login(LoginRequest) returns (Tokens);
-  rpc VerifyTokenAndGetId(Token) returns (Identity);
-  rpc RefreshTokens(Token) returns (Tokens);
+  rpc GetUserByToken(Token) returns (User);
+  rpc UpdateTokens(Token) returns (Tokens);
+
+  rpc RemovePassword(RemovePasswordRequest) returns (google.protobuf.Empty);
+  rpc RemovePasswordConfirm(ConfirmRemovePasswordRequest) returns (google.protobuf.Empty);
+  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+
+  rpc SetLanguage(LanguageRequest) returns (google.protobuf.Empty);
 }
 
 message RegisterRequest {
   string email = 1;
   string password = 2;
-}
-
-message Token {
-  string token = 1;
-}
-
-message Identity {
-  string userId = 1;
+  string lang = 3;
 }
 
 message User {
@@ -33,7 +33,35 @@ message User {
   string                    email = 2;
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp updated_at = 4;
-  int32                     status = 5;
+}
+
+message ConfirmRequest {
+  string email = 1;
+  string password = 2;
+  string code = 3;
+}
+
+message Token {
+  string token = 1;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RemovePasswordRequest {
+  string email = 1;
+}
+
+message ConfirmRemovePasswordRequest {
+  string email = 1;
+  string code = 2;
+}
+
+message ChangePasswordRequest {
+  string email = 1;
+  string password = 2;
 }
 
 message Tokens {
@@ -41,7 +69,16 @@ message Tokens {
   string refreshToken = 2;
 }
 
-message LoginRequest {
+message RecoveryPasswordRequest {
   string email = 1;
-  string password = 2;
+  string codeWorld = 2;
+}
+
+message ConfirmRecoveryPasswordRequest {
+  string email = 1;
+  string code = 2;
+}
+
+message LanguageRequest {
+  string lang = 2;
 }

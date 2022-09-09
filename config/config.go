@@ -1,103 +1,98 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
-	"os"
+	"github.com/spf13/viper"
 	"time"
 )
 
-const EnvName = ".env"
+const envFileName = ".env"
 
 type Config struct{}
 
 func NewConfig() *Config {
-	if err := godotenv.Load(EnvName); err != nil {
+	viper.SetConfigFile(envFileName)
+
+	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
+
 	return &Config{}
 }
 
-func (e *Config) GetJwtAccessSecretKey() string {
-	return os.Getenv("JWT_ACCESS_SECRET_KEY")
+func (c *Config) GetGrpcPort() string {
+	return viper.GetString("SELF_GRPC_PORT")
 }
 
-func (e *Config) GetJwtRefreshSecretKey() string {
-	return os.Getenv("JWT_REFRESH_SECRET_KEY")
+func (c *Config) GetDbHost() string {
+	return viper.GetString("DB_HOST")
 }
 
-func (e *Config) GetJwtRegSecretKey() string {
-	return os.Getenv("JWT_REGISTER_SECRET_KEY")
+func (c *Config) GetDbUsername() string {
+	return viper.GetString("DB_USER")
 }
 
-func (e *Config) GetDbHost() string {
-	return os.Getenv("DB_HOST")
+func (c *Config) GetDbName() string {
+	return viper.GetString("DB_NAME")
 }
 
-func (e *Config) GetDbUsername() string {
-	return os.Getenv("DB_USERNAME")
+func (c *Config) GetDbPort() string {
+	return viper.GetString("DB_PORT")
 }
 
-func (e *Config) GetDbName() string {
-	return os.Getenv("DB_NAME")
+func (c *Config) GetDbPassword() string {
+	return viper.GetString("DB_PASSWORD")
 }
 
-func (e *Config) GetDbPort() string {
-	return os.Getenv("DB_PORT")
+func (c *Config) GetPwdSalt() string {
+	return viper.GetString("PASSWORD_SALT")
 }
 
-func (e *Config) GetDbPassword() string {
-	return os.Getenv("DB_PASSWORD")
+func (c *Config) GetCodeSalt() string {
+	return viper.GetString("CODE_SALT")
 }
 
-func (e *Config) GetGrpcPort() string {
-	return os.Getenv("GRPC_PORT")
+func (c *Config) GetJwtAccessSecretKey() string {
+	return viper.GetString("JWT_ACCESS_SECRET_KEY")
 }
 
-func (e *Config) GetRestPort() string {
-	return os.Getenv("REST_PORT")
+func (c *Config) GetJwtRefreshSecretKey() string {
+	return viper.GetString("JWT_REFRESH_SECRET_KEY")
 }
 
-func (e *Config) GetServerMode() string {
-	return os.Getenv("SERVER_MODE")
-}
-
-func (e *Config) GetEnvironment() string {
-	return os.Getenv("ENVIRONMENT")
-}
-
-func (e *Config) GetPwdSalt() string {
-	return os.Getenv("PASSWORD_SALT")
-}
-
-func (e *Config) GetRegisterDuration() time.Duration {
-	duration := os.Getenv("JWT_REGISTER_DURATION")
-
-	result, err := time.ParseDuration(duration)
+func (c *Config) GetAccessDuration() time.Duration {
+	duration, err := time.ParseDuration(viper.GetString("JWT_ACCESS_DURATION"))
 	if err != nil {
 		panic(err)
 	}
 
-	return result
+	return duration
 }
 
-func (e *Config) GetAccessDuration() time.Duration {
-	duration := os.Getenv("JWT_ACCESS_DURATION")
-
-	result, err := time.ParseDuration(duration)
+func (c *Config) GetRefreshDuration() time.Duration {
+	duration, err := time.ParseDuration(viper.GetString("JWT_REFRESH_DURATION"))
 	if err != nil {
 		panic(err)
 	}
 
-	return result
+	return duration
 }
 
-func (e *Config) GetRefreshDuration() time.Duration {
-	duration := os.Getenv("JWT_REFRESH_DURATION")
+func (c *Config) GetNotifyGrpcPort() string {
+	return viper.GetString("NOTIFY_SERVICE_GRPC_PORT")
+}
 
-	result, err := time.ParseDuration(duration)
-	if err != nil {
-		panic(err)
-	}
+func (c *Config) GetAppIssue() string {
+	return viper.GetString("APP_ISSUE")
+}
 
-	return result
+func (c *Config) GetEncryptKey() string {
+	return viper.GetString("ENCRYPT_KEY")
+}
+
+func (c *Config) GetNotifyAddress() string {
+	return viper.GetString("NOTIFY_ADDRESS")
+}
+
+func (c *Config) GetCodeLength() int {
+	return viper.GetInt("CODE_SYMBOL_COUNT")
 }

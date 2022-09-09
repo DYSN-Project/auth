@@ -1,57 +1,49 @@
 package entity
 
 import (
-	"github.com/DYSN-Project/auth/internal/model/consts"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"time"
 )
 
 type User struct {
-	ID        uuid.UUID `gorm:"primary_key"`
-	Email     string
-	Password  string
-	Status    int
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
+	Id          uuid.UUID `gorm:"primary_key"`
+	Email       string
+	Password    string
+	ConfirmCode string
+	Lang        string
+	IsConfirmed bool
+	Date
 }
 
 func NewUserIngot() *User {
 	return &User{}
 }
 
-func NewUser(email, password string) *User {
+func NewUser(email,
+	password,
+	confirmCode,
+	lang string) *User {
 	return &User{
-		Email:    email,
-		Password: password,
+		Email:       email,
+		Password:    password,
+		ConfirmCode: confirmCode,
+		Lang:        lang,
 	}
 }
 
 func (u *User) IsEmpty() bool {
-	return u.ID == uuid.Nil
+	return u.Id == uuid.Nil
 }
 
-func (u *User) IsActive() bool {
-	return u.Status == consts.UserStatusActive
-}
-
-func (u *User) IsNotActive() bool {
-	return u.Status == consts.UserStatusNotActive
-}
-
-func (u *User) IsBanned() bool {
-	return u.Status == consts.UserStatusBanned
-}
-
-func (u *User) IsDeleted() bool {
-	return u.Status == consts.UserStatusDeleted
+func (u *User) IsUserConfirmed() bool {
+	return u.IsConfirmed
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
-	u.ID = uuid.New()
+	u.Id = uuid.New()
 	u.CreatedAt = time.Now()
-	u.Status = consts.UserStatusActive
+	u.IsConfirmed = false
 
 	return
 }
@@ -60,4 +52,8 @@ func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
 	u.UpdatedAt = time.Now()
 
 	return
+}
+
+func (u *User) TableName() string {
+	return "users"
 }

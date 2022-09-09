@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "/grpc/pb/notify;pb";
+
+
+import "google/protobuf/empty.proto";
+
+package notify;
+
+service Notify {
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc ConfirmRegister(EmailWithCode) returns (google.protobuf.Empty);
+  rpc RecoveryPassword(EmailWithCode) returns (google.protobuf.Empty);
+}
+
+message EmailWithCode {
+  string email = 1;
+  string code = 2;
+  string lang = 3;
+}
