@@ -4,8 +4,8 @@ import (
 	"dysn/auth/config"
 	"dysn/auth/pkg/log"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var db *gorm.DB
@@ -21,11 +21,10 @@ func newDb(cfg *config.Config, logger *log.Logger) *gorm.DB {
 		cfg.GetDbPassword(),
 	)
 
-	database, err := gorm.Open("postgres", url)
+	database, err := gorm.Open(postgres.Open(url), &gorm.Config{})
 	if err != nil {
 		logger.ErrorLog.Panic(err)
 	}
-
 	return database
 }
 
@@ -33,11 +32,14 @@ func StartDB(cfg *config.Config, logger *log.Logger) *gorm.DB {
 	if db == nil {
 		db = newDb(cfg, logger)
 	}
-	logger.InfoLog.Println("Connecting to database...")
-
-	if err := db.DB().Ping(); err != nil {
-		panic(err)
+	sql, err := db.DB()
+	if err != nil {
+		logger.ErrorLog.Panic(err)
 	}
+	if err = sql.Ping(); err != nil {
+		logger.ErrorLog.Panic(err)
+	}
+	logger.InfoLog.Println("Connecting to database...")
 
 	return db
 }
@@ -45,7 +47,12 @@ func StartDB(cfg *config.Config, logger *log.Logger) *gorm.DB {
 func CloseDB(db *gorm.DB, logger *log.Logger) {
 	logger.InfoLog.Println("Close database Connection")
 
-	if err := db.Close(); err != nil {
+	sql, err := db.DB()
+	if err != nil {
+		logger.ErrorLog.Panic(err)
+	}
+	err = sql.Close()
+	if err != nil {
 		logger.ErrorLog.Panic(err)
 	}
 }

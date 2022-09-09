@@ -3,7 +3,7 @@ package repository
 import (
 	"dysn/auth/internal/model/entity"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"time"
 )
 

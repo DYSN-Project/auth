@@ -4,7 +4,7 @@ import (
 	"dysn/auth/internal/model/entity"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type RecoveryRepoInterface interface {
