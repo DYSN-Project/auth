@@ -19,7 +19,7 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// NotifyClient is the client API for Notify service.
+// NotifyClient is the client API for Notify pkg.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NotifyClient interface {
@@ -63,7 +63,7 @@ func (c *notifyClient) RecoveryPassword(ctx context.Context, in *EmailWithCode, 
 	return out, nil
 }
 
-// NotifyServer is the server API for Notify service.
+// NotifyServer is the server API for Notify pkg.
 // All implementations must embed UnimplementedNotifyServer
 // for forward compatibility
 type NotifyServer interface {
@@ -88,7 +88,7 @@ func (UnimplementedNotifyServer) RecoveryPassword(context.Context, *EmailWithCod
 }
 func (UnimplementedNotifyServer) mustEmbedUnimplementedNotifyServer() {}
 
-// UnsafeNotifyServer may be embedded to opt out of forward compatibility for this service.
+// UnsafeNotifyServer may be embedded to opt out of forward compatibility for this pkg.
 // Use of this interface is not recommended, as added methods to NotifyServer will
 // result in compilation errors.
 type UnsafeNotifyServer interface {
@@ -153,7 +153,7 @@ func _Notify_RecoveryPassword_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-// Notify_ServiceDesc is the grpc.ServiceDesc for Notify service.
+// Notify_ServiceDesc is the grpc.ServiceDesc for Notify pkg.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Notify_ServiceDesc = grpc.ServiceDesc{

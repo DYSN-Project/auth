@@ -1,108 +1,109 @@
 package service
 
 import (
-	"dysn/auth/config"
+	"context"
 	"dysn/auth/internal/helper"
+	"dysn/auth/internal/model/dto"
 	"dysn/auth/internal/model/entity"
-	"dysn/auth/internal/repository"
-	"dysn/auth/internal/transport/grpc/client"
-	"dysn/auth/pkg/jwt"
-	"dysn/auth/pkg/log"
-	"github.com/google/uuid"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/segmentio/kafka-go"
+	"time"
 )
 
-type RegisterInterface interface {
-	RegisterUser(email, password, lang string) (*entity.User, error)
-	ConfirmRegister(email, password, code string) (*entity.Tokens, error)
-}
-
 type Register struct {
-	cfg        *config.Config
-	jwtService jwt.JwtInterface
-	userRepo   repository.UserRepoInterface
-	logger     *log.Logger
-	notify     *client.Notify
-	BaseService
+	userRepo  UserRepoInterface
+	userKafka *kafka.Writer
+	*baseService
 }
 
-func NewRegister(cfg *config.Config,
-	jwtSrv jwt.JwtInterface,
-	usrRepo repository.UserRepoInterface,
-	logger *log.Logger,
-	notify *client.Notify) *Register {
-	return &Register{
-		cfg:        cfg,
-		jwtService: jwtSrv,
-		userRepo:   usrRepo,
-		logger:     logger,
-		notify:     notify,
-	}
+func NewRegister(userRepo UserRepoInterface,
+	service *baseService,
+	writer *kafka.Writer) *Register {
+	return &Register{userRepo, writer, service}
 }
 
-func (r *Register) RegisterUser(email, password, lang string) (*entity.User, error) {
-	existUser := r.userRepo.GetUserByEmail(email)
-	if !existUser.IsEmpty() {
-		return nil, helper.MakeGrpcBadRequestError(errAlreadyConfirmed)
-	}
-
-	passwordHash, err := helper.GetHash(password, r.cfg.GetPwdSalt())
+func (r *Register) RegisterUser(ctx context.Context, registerDto *dto.Register) (*entity.User, error) {
+	err := r.sendRegisterToKafka(registerDto.Email, "123456", registerDto.Lang)
 	if err != nil {
-		r.logger.ErrorLog.Println("hash password error: ", err)
+		fmt.Println("Kafka err :", err)
+		return nil, err
+	}
+	fmt.Println("Kafka was sender")
+	return nil, nil
+
+	if r.userRepo.ExistUserByEmail(ctx, registerDto.Email) {
+		return nil, helper.MakeGrpcBadRequestError(errUserAlreadyExist)
+	}
+
+	passwordHash, err := helper.GetHash(registerDto.Password, r.cfg.GetPwdSalt())
+	if err != nil {
+		r.logger.ErrorLog.Println("err hash password: ", err)
 
 		return nil, err
 	}
 
 	code := helper.RandStringInt(r.cfg.GetCodeLength())
-	codeHash, _ := helper.GetHash(code, r.cfg.GetCodeSalt())
-
-	user := entity.NewUser(email, passwordHash, codeHash, lang)
-	user, err = r.userRepo.CreateUser(user)
+	codeHash, err := helper.GetHash(code, r.cfg.GetCodeSalt())
 	if err != nil {
-		r.logger.ErrorLog.Println("Save user error: ", err)
+		r.logger.ErrorLog.Println("err hash code: ", err)
 
 		return nil, err
 	}
 
-	r.notifyConfirmRegister(user.Email, code, lang)
+	user := entity.NewUser(registerDto.Email, passwordHash, codeHash, registerDto.Lang)
+	if err = r.userRepo.CreateUser(ctx, user); err != nil {
+		r.logger.ErrorLog.Println("err create user: ", err)
+
+		return nil, err
+	}
+
+	r.sendRegisterToKafka(user.Email, code, registerDto.Lang)
 
 	return user, nil
 }
 
-func (r *Register) ConfirmRegister(email, password, code string) (*entity.Tokens, error) {
-	user := r.userRepo.GetUserByEmail(email)
-	if user.IsEmpty() {
-		return nil, helper.MakeGrpcBadRequestError(errInvalidUserData)
+func (r *Register) ConfirmRegister(ctx context.Context, confirmRegisterDto *dto.Confirm) (*entity.Tokens, error) {
+	user, err := r.userRepo.GetUserByEmail(ctx, confirmRegisterDto.Email)
+	if user == nil || user.IsEmpty() {
+		return nil, helper.MakeGrpcBadRequestError(errUserNotFound)
 	}
 	if user.IsConfirmed {
 		return nil, helper.MakeGrpcBadRequestError(errAlreadyConfirmed)
 	}
 
-	err := helper.CompareHash(password, user.Password, r.cfg.GetPwdSalt())
-	if err != nil {
+	if err = helper.CompareHash(confirmRegisterDto.Password,
+		user.Password,
+		r.cfg.GetPwdSalt()); err != nil {
+		r.logger.ErrorLog.Println("err compare hash password for confirm: ", err)
+
 		return nil, helper.MakeGrpcBadRequestError(errInvalidUserData)
 	}
-	if !r.compareCode(code, user) {
+	if !r.compareCode(confirmRegisterDto.Code, user) {
 		return nil, helper.MakeGrpcBadRequestError(errInvalidUserCode)
 	}
 
-	if err = r.userRepo.ConfirmUser(user.Id); err != nil {
-		r.logger.ErrorLog.Println("confirm user error: ", err)
+	if err = r.userRepo.ConfirmUser(ctx, user.Id); err != nil {
+		r.logger.ErrorLog.Println("err confirm user: ", err)
 
 		return nil, errInternalServer
 	}
 
 	tokens, err := r.getTokens(user.Id, user.Lang)
 	if err != nil {
-		r.logger.ErrorLog.Println("generate tokens error: ", err)
+		r.logger.ErrorLog.Println("err generate tokens: ", err)
 
 		return nil, errInternalServer
 	}
 
 	r.logger.InfoLog.Println("New user was registered: ", user.Email)
+	//TODO::statistic
 
 	return tokens, nil
 }
 
+/*
 func (r *Register) notifyConfirmRegister(email, code, lang string) {
 	go func() {
 		err := r.notify.ConfirmRegister(email, code, lang)
@@ -115,28 +116,50 @@ func (r *Register) notifyConfirmRegister(email, code, lang string) {
 
 		return
 	}()
-}
-
-func (r *Register) getTokens(userId uuid.UUID, lang string) (*entity.Tokens, error) {
-	data := map[string]interface{}{
-		"uid":  userId.String(),
-		"lang": lang,
-	}
-	accessToken, err := r.jwtService.GenerateToken(data, r.cfg.GetJwtAccessSecretKey(), r.cfg.GetAccessDuration())
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := r.jwtService.GenerateToken(data, r.cfg.GetJwtRefreshSecretKey(), r.cfg.GetRefreshDuration())
-	if err != nil {
-		return nil, err
-	}
-
-	return entity.NewTokens(accessToken, refreshToken), nil
-}
+}*/
 
 func (r *Register) compareCode(code string, user *entity.User) bool {
 	return helper.CompareHash(code,
 		user.ConfirmCode,
 		r.cfg.GetCodeSalt()) == nil
+}
+
+func (r *Register) sendRegisterToKafka(email, code, lang string) error {
+	const retries = 3
+	var err error
+	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		val := struct {
+			Email string `json:"email"`
+			Lang  string `json:"lang"`
+			Code  string `json:"code"`
+		}{
+			Email: email,
+			Lang:  lang,
+			Code:  code,
+		}
+		resVal, _ := json.Marshal(val)
+
+		fmt.Println(string(resVal))
+		err := r.userKafka.WriteMessages(ctx, kafka.Message{
+			Topic: r.cfg.GetTopicUserRegister(),
+			Value: resVal,
+		})
+		if errors.Is(err, kafka.LeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(time.Millisecond * 250)
+			continue
+		}
+
+		if err != nil {
+			r.logger.ErrorLog.Printf("unexpected error %v", err)
+			return err
+		}
+		break
+	}
+
+	r.logger.InfoLog.Println("send user to kafka was send to topic:", r.cfg.GetTopicUserRegister())
+
+	return err
 }

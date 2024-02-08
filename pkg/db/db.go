@@ -1,18 +1,21 @@
 package db
 
 import (
+	"database/sql"
 	"dysn/auth/config"
 	"dysn/auth/pkg/log"
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"os"
+	"sync"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var db *gorm.DB
+var db *sql.DB
 
 const dbUri = "host=%s user=%s dbname=%s port=%s sslmode=disable password=%s"
 
-func newDb(cfg *config.Config, logger *log.Logger) *gorm.DB {
+func newDb(cfg *config.Config, logger *log.Logger) *sql.DB {
 	url := fmt.Sprintf(dbUri,
 		cfg.GetDbHost(),
 		cfg.GetDbUsername(),
@@ -21,38 +24,34 @@ func newDb(cfg *config.Config, logger *log.Logger) *gorm.DB {
 		cfg.GetDbPassword(),
 	)
 
-	database, err := gorm.Open(postgres.Open(url), &gorm.Config{})
+	db, err := sql.Open("pgx", url)
 	if err != nil {
-		logger.ErrorLog.Panic(err)
+		logger.ErrorLog.Panic("Cant connect db: ", err)
+		os.Exit(1)
 	}
-	return database
+
+	return db
 }
 
-func StartDB(cfg *config.Config, logger *log.Logger) *gorm.DB {
+func StartDB(cfg *config.Config, logger *log.Logger) *sql.DB {
+	var once sync.Once
 	if db == nil {
-		db = newDb(cfg, logger)
+		once.Do(func() {
+			db = newDb(cfg, logger)
+		})
+	} else {
+		logger.ErrorLog.Println("Single instance already created.")
+		return db
 	}
-	sql, err := db.DB()
-	if err != nil {
-		logger.ErrorLog.Panic(err)
-	}
-	if err = sql.Ping(); err != nil {
-		logger.ErrorLog.Panic(err)
-	}
+
 	logger.InfoLog.Println("Connecting to database...")
 
 	return db
 }
 
-func CloseDB(db *gorm.DB, logger *log.Logger) {
+func CloseDB(db *sql.DB, logger *log.Logger) {
 	logger.InfoLog.Println("Close database Connection")
-
-	sql, err := db.DB()
-	if err != nil {
-		logger.ErrorLog.Panic(err)
-	}
-	err = sql.Close()
-	if err != nil {
+	if err := db.Close(); err != nil {
 		logger.ErrorLog.Panic(err)
 	}
 }

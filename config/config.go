@@ -96,3 +96,15 @@ func (c *Config) GetNotifyAddress() string {
 func (c *Config) GetCodeLength() int {
 	return viper.GetInt("CODE_SYMBOL_COUNT")
 }
+
+func (c *Config) GetKafkaBroker1() string {
+	return viper.GetString("KAFKA_BROKER_1")
+}
+
+func (c *Config) GetKafkaBroker2() string {
+	return viper.GetString("KAFKA_BROKER_2")
+}
+
+func (c *Config) GetTopicUserRegister() string {
+	return viper.GetString("TOPIC_USER_REGISTER")
+}

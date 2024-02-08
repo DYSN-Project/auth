@@ -1,0 +1,35 @@
+{
+  "registerSubject": {
+    "description" : "Confirm registration on TCT platform",
+    "one": "Confirm registration on TCT platform",
+    "other": "Confirm registration on TCT platform"
+  },
+  "registerDescription": {
+    "description": "Body in confirm html template",
+    "one": "Your confirm register code: ",
+    "other": "Your confirm register code: "
+  },
+
+  "disableGaSubject": {
+    "description" : "Confirm disable Google Authenticator on TCT platform",
+    "one": "Confirm disable Google Authenticator on TCT platform",
+    "other": "Confirm disable Google Authenticator on TCT platform"
+  },
+  "disableGaDescription": {
+    "description": "Body in confirm disable ga in html template",
+    "one": "Your code for disable google authenticator: ",
+    "other": "Your code for disable google authenticator: "
+  },
+
+  "recoveryPasswordSubject": {
+    "description" : "Recovery password request on TCT platform",
+    "one": "Recovery password request on TCT platform",
+    "other": "Recovery password request on TCT platform"
+  },
+
+  "recoveryPasswordDescription": {
+    "description": "Body in confirm recovery password in html template",
+    "one": "Your code for recovery password: ",
+    "other": "Your code for recovery password: "
+  }
+}

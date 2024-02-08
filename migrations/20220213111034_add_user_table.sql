@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users
     password        VARCHAR(255) NOT NULL,
     is_confirmed    BOOL DEFAULT(false),
     confirm_code    VARCHAR(255),
-    lang            VARCHAR(255) DEFAULT('en')
+    lang            VARCHAR(255) DEFAULT('en'),
     created_at      TIMESTAMP WITH TIME ZONE,
     deleted_at      TIMESTAMP WITH TIME ZONE,
     updated_at      TIMESTAMP WITH TIME ZONE

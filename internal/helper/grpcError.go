@@ -26,7 +26,7 @@ func MakeGrpcValidationError(err error) error {
 }
 
 func MakeGrpcBadRequestError(err error) error {
-	return badRequestError(err, "bad request error")
+	return badRequestError(err, "bad dto error")
 }
 
 func badRequestError(err error, message string) error {

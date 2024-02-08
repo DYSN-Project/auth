@@ -1,7 +1,6 @@
 package server
 
 import (
-	"dysn/auth/internal/service"
 	pb "dysn/auth/internal/transport/grpc/pb/auth"
 	"dysn/auth/pkg/log"
 	"google.golang.org/grpc"
@@ -20,9 +19,9 @@ type Grpc struct {
 }
 
 func NewGrpc(port string,
-	authSrv service.AuthInterface,
-	regSrv service.RegisterInterface,
-	recoverySrv service.RecoveryInterface,
+	authSrv AuthInterface,
+	regSrv RegisterInterface,
+	recoverySrv RecoveryInterface,
 	logger *log.Logger) *Grpc {
 	srv := grpc.NewServer()
 	auth := NewAuthServer(authSrv, regSrv, recoverySrv, logger)
@@ -36,7 +35,7 @@ func NewGrpc(port string,
 }
 
 func (g *Grpc) StartServer() {
-	g.logger.InfoLog.Println("Server transport starting...")
+	g.logger.InfoLog.Println("Server delivery starting...")
 
 	connection, err := net.Listen("tcp", g.port)
 	if err != nil {
@@ -50,6 +49,6 @@ func (g *Grpc) StartServer() {
 }
 
 func (g *Grpc) StopServer() {
-	g.logger.InfoLog.Println("Server transport stopping...")
+	g.logger.InfoLog.Println("Server delivery stopping...")
 	g.server.Stop()
 }

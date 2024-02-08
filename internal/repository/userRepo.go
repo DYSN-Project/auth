@@ -1,118 +1,205 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
 	"dysn/auth/internal/model/entity"
+	"errors"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 	"time"
 )
 
-type UserRepoInterface interface {
-	GetUserByEmail(email string) *entity.User
-	GetUserById(id uuid.UUID) *entity.User
-	CreateUser(user *entity.User) (*entity.User, error)
-	ConfirmUser(id uuid.UUID) error
-	Add2FaCode(id uuid.UUID, code string) error
-	Remove2FaCode(id uuid.UUID) error
-	SetConfirmCode(id uuid.UUID, code string) error
-	Confirm2FaCode(id uuid.UUID) error
-	ChangePassword(email, password string) error
-	UpdateLang(userId uuid.UUID, lang string) error
-}
-
 type UserRepository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepository {
+func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{
 		db: db,
 	}
 }
 
-func (u *UserRepository) GetUserByEmail(email string) *entity.User {
-	user := entity.NewUserIngot()
-	u.db.Where("email = ?", email).First(user)
-
-	return user
-}
-
-func (u *UserRepository) GetUserById(id uuid.UUID) *entity.User {
-	user := entity.NewUserIngot()
-	u.db.Where("id = ?", id).First(user)
-
-	return user
-}
-
-func (u *UserRepository) CreateUser(user *entity.User) (*entity.User, error) {
-	if err := u.db.Create(user).Error; err != nil {
+func (u *UserRepository) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
+	query := `SELECT id,
+       email,
+       password,
+       confirm_code,
+       lang,
+       is_confirmed,
+       created_at,
+       updated_at FROM users
+             WHERE email = $1`
+	rows, err := u.db.QueryContext(ctx, query, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
+	defer rows.Close()
+	var user *entity.User
 
+	err = rows.Scan(&user.Id,
+		&user.Email,
+		user.Password,
+		&user.ConfirmCode,
+		&user.Lang,
+		&user.IsConfirmed,
+		&user.CreatedAt,
+		&user.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
 	return user, nil
 }
 
-func (u *UserRepository) ConfirmUser(id uuid.UUID) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"is_confirmed": true,
-			"confirm_code": nil,
-			"updated_at":   time.Now(),
-		}).Error
+func (u *UserRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*entity.User, error) {
+	query := `SELECT id,
+       email,
+       password,
+       confirm_code,
+       lang,
+       is_confirmed,
+       created_at,
+       updated_at FROM users
+             WHERE id = $1`
+	rows, err := u.db.QueryContext(ctx, query, userId.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	var user *entity.User
+
+	err = rows.Scan(&user.Id,
+		&user.Email,
+		user.Password,
+		&user.ConfirmCode,
+		&user.Lang,
+		&user.IsConfirmed,
+		&user.CreatedAt,
+		&user.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
-func (u *UserRepository) Add2FaCode(id uuid.UUID, code string) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"two_factor_code": code,
-			"updated_at":      time.Now(),
-		}).Error
+func (u *UserRepository) CreateUser(ctx context.Context, user *entity.User) error {
+	query := `INSERT INTO users (id,
+                  email,
+                  password,
+                  confirm_code,
+                  lang,
+                  is_confirmed) VALUES ($1, $2, $3, $4, $5, $6)`
+
+	_, err := u.db.ExecContext(ctx, query,
+		user.Id,
+		user.Email,
+		user.Password,
+		user.ConfirmCode,
+		user.Lang,
+		false)
+
+	return err
 }
 
-func (u *UserRepository) Confirm2FaCode(id uuid.UUID) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"is_included_2fa": true,
-			"updated_at":      time.Now(),
-		}).Error
+func (u *UserRepository) ConfirmUser(ctx context.Context, userId uuid.UUID) error {
+	query := `UPDATE users SET 
+                  is_confirmed = $1,
+                  confirm_code = $2,
+                  updated_at = $3
+             WHERE id = $4`
+	_, err := u.db.ExecContext(ctx, query, true,
+		"",
+		time.Now(),
+		userId)
+
+	return err
 }
 
-func (u *UserRepository) Remove2FaCode(id uuid.UUID) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"is_included_2fa": false,
-			"confirm_code":    nil,
-			"updated_at":      time.Now(),
-		}).Error
+func (u *UserRepository) Add2FaCode(ctx context.Context, userId uuid.UUID, code string) error {
+	query := `UPDATE users SET 
+                  two_factor_code = $1,
+                  updated_at = $2
+             WHERE id = $3`
+	_, err := u.db.ExecContext(ctx, query, code,
+		time.Now(),
+		userId)
+
+	return err
 }
 
-func (u *UserRepository) SetConfirmCode(id uuid.UUID, code string) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"confirm_code": code,
-			"updated_at":   time.Now(),
-		}).Error
+func (u *UserRepository) Confirm2FaCode(ctx context.Context, userId uuid.UUID) error {
+	query := `UPDATE users SET 
+                  is_included_2fa = $1,
+                  updated_at = $2
+             WHERE id = $3`
+	_, err := u.db.ExecContext(ctx, query, false,
+		time.Now(),
+		userId)
+
+	return err
 }
 
-func (u *UserRepository) ChangePassword(email, password string) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("email = ?", email).
-		Updates(map[string]interface{}{
-			"password":   password,
-			"updated_at": time.Now(),
-		}).Error
+func (u *UserRepository) Remove2FaCode(ctx context.Context, userId uuid.UUID) error {
+	query := `UPDATE users SET 
+                  is_included_2fa = $1,
+                  confirm_code = $2,
+                  updated_at = $3
+             WHERE id = $4`
+	_, err := u.db.ExecContext(ctx, query, false,
+		nil,
+		time.Now(),
+		userId)
+
+	return err
 }
 
-func (u *UserRepository) UpdateLang(userId uuid.UUID, lang string) error {
-	return u.db.Model(entity.NewUserIngot()).
-		Where("id = ?", userId).
-		Updates(map[string]interface{}{
-			"lang":       lang,
-			"updated_at": time.Now(),
-		}).Error
+func (u *UserRepository) SetConfirmCode(ctx context.Context, userId uuid.UUID, code string) error {
+	query := `UPDATE users SET 
+                  confirm_code = $1,
+                  updated_at = $2
+             WHERE id = $3`
+	_, err := u.db.ExecContext(ctx, query, code,
+		time.Now(),
+		userId)
+
+	return err
+}
+
+func (u *UserRepository) UpdateLang(ctx context.Context, userId uuid.UUID, lang string) error {
+	query := `UPDATE users SET 
+                  lang = $1,
+                  updated_at = $2
+             WHERE id = $3`
+	_, err := u.db.ExecContext(ctx, query, lang,
+		time.Now(),
+		userId)
+
+	return err
+}
+
+func (u *UserRepository) ChangePasswordByEmail(ctx context.Context, email, password string) error {
+	query := `UPDATE users SET 
+                  password = $1,
+                  updated_at = $2
+             WHERE email = $3`
+	_, err := u.db.ExecContext(ctx, query, password,
+		time.Now(),
+		email)
+
+	return err
+}
+
+func (u *UserRepository) ExistUserByEmail(ctx context.Context, email string) bool {
+	var exist bool
+	query := `SELECT EXISTS( SELECT 1 FROM users where email = $1)`
+	if err := u.db.QueryRowContext(ctx, query, email).Scan(&exist); err != nil {
+		return false
+	}
+
+	return exist
 }

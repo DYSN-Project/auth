@@ -16,14 +16,8 @@ var mgrCmd = &cobra.Command{
 		cfg := config.NewConfig()
 		logger := log.NewLogger()
 		database := db.StartDB(cfg, logger)
-
 		defer db.CloseDB(database, logger)
-
-		dbSql, err := database.DB()
-		if err != nil {
-			panic(err)
-		}
-		if err := goose.Run(args[0], dbSql, path, args[1:]...); err != nil {
+		if err := goose.Run(args[0], database, path, args[1:]...); err != nil {
 			panic(err)
 		}
 	},

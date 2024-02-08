@@ -13,7 +13,6 @@ var (
 	errUserAlreadyExist        = errors.New(consts.ErrUserAlreadyExist)
 	errUserNotFound            = errors.New(consts.ErrUserNotFound)
 	errInternalServer          = errors.New(consts.ErrInternalServer)
-	errUserStatus              = errors.New(consts.ErrUserNotActive)
 	errAlreadyConfirmed        = errors.New(consts.ErrAlreadyConfirmed)
 	errRecoveryRequestNotFound = errors.New(consts.ErrRecoveryRequestNotFound)
 )

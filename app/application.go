@@ -10,9 +10,11 @@ import (
 	"dysn/auth/pkg/db"
 	"dysn/auth/pkg/jwt"
 	"dysn/auth/pkg/log"
+	"github.com/segmentio/kafka-go"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func Run(ctx context.Context) {
@@ -20,6 +22,22 @@ func Run(ctx context.Context) {
 
 	logger := log.NewLogger()
 	jwtService := jwt.NewJwtService()
+
+	userKafkaProducer := &kafka.Writer{
+		Addr:                   kafka.TCP(cfg.GetKafkaBroker1()),
+		Balancer:               &kafka.LeastBytes{},
+		WriteTimeout:           30 * time.Second,
+		ReadTimeout:            30 * time.Second,
+		Async:                  false,
+		AllowAutoTopicCreation: true,
+		/*	Transport: &kafka.Transport{
+			SASL: plain.Mechanism{
+				Username: cfg.GetAnalyticsKafkaUsername(),
+				Password: cfg.GetAnalyticsKafkaPassword(),
+			},
+		},*/
+	}
+	defer userKafkaProducer.Close()
 
 	database := db.StartDB(cfg, logger)
 	defer db.CloseDB(database, logger)
@@ -29,9 +47,10 @@ func Run(ctx context.Context) {
 
 	notifyCli := client.NewNotify(cfg.GetNotifyAddress(), logger)
 
-	authSrv := service.NewAuth(cfg, jwtService, userRepo, logger)
-	registerSrv := service.NewRegister(cfg, jwtService, userRepo, logger, notifyCli)
-	recoverySrv := service.NewRecovery(cfg, userRepo, recoveryRepo, notifyCli, logger)
+	baseService := service.NewService(cfg, jwtService, logger)
+	authSrv := service.NewAuth(userRepo, baseService)
+	registerSrv := service.NewRegister(userRepo, baseService, userKafkaProducer)
+	recoverySrv := service.NewRecovery(userRepo, recoveryRepo, notifyCli, baseService)
 
 	srv := server.NewGrpc(cfg.GetGrpcPort(),
 		authSrv,

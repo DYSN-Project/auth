@@ -1,94 +1,122 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
+	"dysn/auth/internal/model/consts"
 	"dysn/auth/internal/model/entity"
-	"fmt"
+	"errors"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"time"
 )
 
-type RecoveryRepoInterface interface {
-	CreateRecovery(recovery *entity.RecoveryPassword) (*entity.RecoveryPassword, error)
-	GetRecoveryByEmail(email string) *entity.RecoveryPassword
-	GetRecovery(email string, status int) *entity.RecoveryPassword
-	UpdateRecovery(id uuid.UUID, data map[string]interface{}) error
-	ExistEmail(email string) bool
-}
-
 type RecoveryRepository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
-func NewRecoveryRepository(db *gorm.DB) *RecoveryRepository {
+func NewRecoveryRepository(db *sql.DB) *RecoveryRepository {
 	return &RecoveryRepository{
 		db: db,
 	}
 }
 
-func (r *RecoveryRepository) GetRecoveryByEmail(email string) *entity.RecoveryPassword {
-	recovery := entity.NewRecoveryIngot()
-	r.db.Where("email = ? ", email).
-		First(recovery)
+func (r *RecoveryRepository) GetRecoveryByEmail(ctx context.Context, email string) (*entity.RecoveryPassword, error) {
+	query := `SELECT id,
+       email,
+       confirm_code,
+       status,
+       created_at,
+       updated_at FROM recovery_password 
+                  WHERE email = $1`
+	rows, err := r.db.QueryContext(ctx, query, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
 
-	return recovery
-}
-
-func (r *RecoveryRepository) GetRecovery(email string,
-	status int) *entity.RecoveryPassword {
-	recovery := entity.NewRecoveryIngot()
-	r.db.Where("email = ? AND status = ? ", email, status).
-		First(recovery)
-
-	return recovery
-}
-
-func (r *RecoveryRepository) CreateRecovery(recovery *entity.RecoveryPassword) (*entity.RecoveryPassword, error) {
-	if err := r.db.Create(recovery).Error; err != nil {
+	var recovery *entity.RecoveryPassword
+	err = rows.Scan(&recovery.Id,
+		&recovery.Email,
+		&recovery.ConfirmCode,
+		&recovery.Status,
+		&recovery.CreatedAt,
+		&recovery.UpdatedAt)
+	if err != nil {
 		return nil, err
 	}
 
 	return recovery, nil
 }
 
-func (r *RecoveryRepository) UpdateRecovery(id uuid.UUID,
-	data map[string]interface{}) error {
-	return r.db.Model(entity.NewRecoveryIngot()).
-		Where("id = ?", id).
-		Updates(data).Error
+func (r *RecoveryRepository) GetRecoveryByStatus(ctx context.Context, email string, status int) (*entity.RecoveryPassword, error) {
+	query := `SELECT id,
+       email,
+       confirm_code,
+       status,
+       created_at,
+       updated_at FROM recovery_password 
+                  WHERE email = $1 AND status = $2`
+	rows, err := r.db.QueryContext(ctx, query, email, status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	var recovery *entity.RecoveryPassword
+	err = rows.Scan(&recovery.Id,
+		&recovery.Email,
+		&recovery.ConfirmCode,
+		&recovery.Status,
+		&recovery.CreatedAt,
+		&recovery.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return recovery, nil
 }
 
-func (r *RecoveryRepository) ExistEmail(email string) bool {
-	var result struct {
-		Found bool
-	}
-	err := r.db.Raw("SELECT EXISTS(SELECT 1 "+
-		"FROM users "+
-		"WHERE email = ? ) AS found",
-		email).Scan(&result).Error
+func (r *RecoveryRepository) CreateRecovery(ctx context.Context, recovery *entity.RecoveryPassword) error {
+	query := `INSERT INTO recovery_password (id,
+                      email,
+                      confirm_code,
+                      status) VALUES ($1, $2, $3, $4)`
 
-	if err != nil {
-		fmt.Println("exist err: ", err)
+	_, err := r.db.ExecContext(ctx, query,
+		uuid.New(),
+		recovery.Email,
+		recovery.ConfirmCode,
+		consts.StatusActive)
 
+	return err
+}
+
+func (r *RecoveryRepository) UpdateRecovery(ctx context.Context, id uuid.UUID, status int, code string) error {
+	query := `UPDATE recovery_password SET 
+                  status = $1,
+                  code = $2,
+                  updated_at = $3
+             WHERE id = $4`
+	_, err := r.db.ExecContext(ctx, query, status,
+		code,
+		time.Now(),
+		id)
+
+	return err
+}
+
+func (r *RecoveryRepository) ExistRecovery(ctx context.Context, email string) bool {
+	var exist bool
+	query := `SELECT EXISTS( SELECT 1 FROM recovery_password where email = $1)`
+	if err := r.db.QueryRowContext(ctx, query, email).Scan(&exist); err != nil {
 		return false
 	}
 
-	return result.Found
-}
-
-func (r *RecoveryRepository) ExistRecovery(email string) bool {
-	var result struct {
-		Found bool
-	}
-	err := r.db.Raw("SELECT EXISTS(SELECT 1 "+
-		"FROM recovery_password "+
-		"WHERE email = ? ) AS found",
-		email).Scan(&result).Error
-
-	if err != nil {
-		fmt.Println("exist err: ", err)
-
-		return false
-	}
-
-	return result.Found
+	return exist
 }
